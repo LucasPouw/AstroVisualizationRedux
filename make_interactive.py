@@ -3,14 +3,18 @@ import argparse
 from astropy.utils.data import get_pkg_data_filename
 
 parser = argparse.ArgumentParser("Make interactive plo from fits file.")
-parser.add_argument('-d', '--downloading', type=int, help='download your own data')
+parser.add_argument(
+    '-d',
+    '--downloading',
+    type=int,
+    help='download your own data')
 parser.add_argument('-fi', '--fits', type=str, help='fits file to use')
 args = parser.parse_args()
 
 if __name__ == '__main__':
     if args.downloading == 1:
         download = input('Paste here your url where to find the fits file: ')
-        fits_download=True
+        fits_download = True
         Image = Interactive(fits_download=True)
     else:
         fits_download = False

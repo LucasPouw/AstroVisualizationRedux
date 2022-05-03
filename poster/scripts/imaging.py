@@ -15,9 +15,18 @@ warnings.filterwarnings("ignore")
 
 __all__ = ['ImagingLofar']
 
+
 class ImagingLofar:
-    def __init__(self, fits_file=None, fits_download: bool=False, vmin: float = None, vmax: float = None,
-                 image_directory: str='poster/images', verbose: bool = True, zoom_effect: bool = True, interactive: bool = False):
+    def __init__(
+            self,
+            fits_file=None,
+            fits_download: bool = False,
+            vmin: float = None,
+            vmax: float = None,
+            image_directory: str = 'poster/images',
+            verbose: bool = True,
+            zoom_effect: bool = True,
+            interactive: bool = False):
         """
         Make LOFAR images (also applicable on other telescope surveys)
         ------------------------------------------------------------
@@ -32,22 +41,23 @@ class ImagingLofar:
         self.verbose = verbose
         self.zoom_effect = zoom_effect
         if self.verbose:
-            print(f"Started imaging {fits_file.split('/')[-1].replace('.fits','').replace('_',' ').replace('.',' ').title()}...")
+            print(
+                f"Started imaging {fits_file.split('/')[-1].replace('.fits','').replace('_',' ').replace('.',' ').title()}...")
         if fits_download:
             link = input('Past here your fits link: \n')
             self.hdu = download_file(link, cache=True)
         else:
             self.hdu = fits.open(fits_file)[0]
-        self.image_data=self.hdu.data
-        while len(self.image_data.shape)!=2:
-            self.image_data=self.image_data[0]
+        self.image_data = self.hdu.data
+        while len(self.image_data.shape) != 2:
+            self.image_data = self.image_data[0]
         self.wcs = WCS(self.hdu.header, naxis=2)
         if vmin is None:
             self.vmin = np.nanstd(self.image_data)
         else:
             self.vmin = vmin
         if vmax is None:
-            self.vmax = np.nanstd(self.image_data)*20
+            self.vmax = np.nanstd(self.image_data) * 20
         else:
             self.vmax = vmax
         self.image_directory = image_directory
@@ -55,29 +65,58 @@ class ImagingLofar:
             os.mkdir(self.image_directory)
         except OSError:
             if verbose:
-                print(f"The directory '{self.image_directory}' already exists.")
+                print(
+                    f"The directory '{self.image_directory}' already exists.")
             else:
                 pass
         else:
-            print(f"Successfully created the directory: '{self.image_directory}'")
+            print(
+                f"Successfully created the directory: '{self.image_directory}'")
 
-        #Transfer function
+        # Transfer function
         if not interactive:
             if 'cutout' in self.fits_file:
-                self.image_data = gaussian_filter(self.tonemap(image_data=self.image_data, b=0.25, threshold=self.vmin), sigma=3)
+                self.image_data = gaussian_filter(
+                    self.tonemap(
+                        image_data=self.image_data,
+                        b=0.25,
+                        threshold=self.vmin),
+                    sigma=3)
             elif 'ILTJ' in self.fits_file:
-                self.image_data = gaussian_filter(self.tonemap(image_data=self.image_data, b=0.25, threshold=self.vmin/1.5), sigma=4)
+                self.image_data = gaussian_filter(
+                    self.tonemap(
+                        image_data=self.image_data,
+                        b=0.25,
+                        threshold=self.vmin / 1.5),
+                    sigma=4)
             else:
                 if self.zoom_effect:
-                    self.image_data = gaussian_filter(self.tonemap(image_data=self.image_data, b=0.5, threshold=0), sigma=2)
+                    self.image_data = gaussian_filter(
+                        self.tonemap(
+                            image_data=self.image_data,
+                            b=0.5,
+                            threshold=0),
+                        sigma=2)
                 else:
-                    self.image_data = gaussian_filter(self.tonemap(image_data=self.image_data, b=0.25, threshold=self.vmin/100), sigma=1)
+                    self.image_data = gaussian_filter(
+                        self.tonemap(
+                            image_data=self.image_data,
+                            b=0.25,
+                            threshold=self.vmin / 100),
+                        sigma=1)
         else:
             self.image_data = gaussian_filter(
-                self.tonemap(image_data=self.image_data, b=0.25, threshold=self.vmin / 100), sigma=1)
+                self.tonemap(
+                    image_data=self.image_data,
+                    b=0.25,
+                    threshold=self.vmin / 100),
+                sigma=1)
 
-
-    def tonemap(self, image_data=None, b: float = 0.25, threshold: float = None):
+    def tonemap(
+        self,
+        image_data=None,
+        b: float = 0.25,
+            threshold: float = None):
         """
         Tonemap the image based on dynamic range. This enables both diffuse and point structures to be clearly visible.
         Works best on unsigned data for now. Scaling both negative and positive is a bit experimental.
@@ -91,15 +130,26 @@ class ImagingLofar:
             threshold = 0
         data_pos = np.where(image_data > threshold, image_data, np.nan)
         data_res = np.where(image_data < threshold, image_data, np.nan)
-        data_pos_tm = (np.nanmax(data_pos) * 0.01 / np.log10(np.nanmax(data_pos) + 1)) * (np.log10(data_pos + 1)) / (
-            np.log10(2 + ((data_pos / np.nanmax(data_pos)) ** (np.log10(b) / np.log10(0.5))) * 8))
-        data_res_tm = (np.nanmax(data_res) * 0.01/ np.log10(np.nanmax(data_res) + 1)) * (np.log10(data_res + 1)) / (
-            np.log10(2 + ((data_res / np.nanmax(data_res)) ** (np.log10(b) / np.log10(0.5))) * 8))
-        data_tm = np.where(image_data > threshold, np.sqrt(data_pos_tm), -1*np.sqrt(np.abs(data_res_tm)))
+        data_pos_tm = (np.nanmax(data_pos) * 0.01 / np.log10(np.nanmax(data_pos) + 1)) * (np.log10(data_pos + 1)
+                                                                                          ) / (np.log10(2 + ((data_pos / np.nanmax(data_pos)) ** (np.log10(b) / np.log10(0.5))) * 8))
+        data_res_tm = (np.nanmax(data_res) * 0.01 / np.log10(np.nanmax(data_res) + 1)) * (np.log10(data_res + 1)
+                                                                                          ) / (np.log10(2 + ((data_res / np.nanmax(data_res)) ** (np.log10(b) / np.log10(0.5))) * 8))
+        data_tm = np.where(image_data > threshold, np.sqrt(
+            data_pos_tm), -1 * np.sqrt(np.abs(data_res_tm)))
         return data_tm
 
-    def imaging(self, image_data=None, wcs=None, image_name: str = 'Nameless', dpi: int = None, save: bool = True,
-                cmap: str = 'CMRmap', text: str = None, imsize: float = None, ra=None, dec=None):
+    def imaging(
+            self,
+            image_data=None,
+            wcs=None,
+            image_name: str = 'Nameless',
+            dpi: int = None,
+            save: bool = True,
+            cmap: str = 'CMRmap',
+            text: str = None,
+            imsize: float = None,
+            ra=None,
+            dec=None):
         """
         Imaging of your data.
         ------------------------------------------------------------
@@ -118,36 +168,56 @@ class ImagingLofar:
         if image_data is None:
             image_data = self.image_data
         if wcs is None:
-            wcs=self.wcs
+            wcs = self.wcs
         if dpi is None:
             w = 16
-            h = image_data.shape[1]/image_data.shape[0]*9
-            dpi = image_data.shape[0]/10
+            h = image_data.shape[1] / image_data.shape[0] * 9
+            dpi = image_data.shape[0] / 10
         else:
-            h=9
-            w=16
+            h = 9
+            w = 16
         plt.figure(figsize=(h, w))
         plt.subplot(projection=wcs)
         if imsize is None:
-            imsize=1
+            imsize = 1
         if 'cutout' in self.fits_file:
-            plt.imshow(image_data, origin='lower', cmap=cmap, vmin=self.vmin*2)
+            plt.imshow(
+                image_data,
+                origin='lower',
+                cmap=cmap,
+                vmin=self.vmin * 2)
         else:
-            #HIGH RES VIDEO:
+            # HIGH RES VIDEO:
             if self.zoom_effect:
                 vmax = self.vmax
-                vmin = min((2/max(imsize,0.2))*(self.vmin/100), self.vmax/20)
-                if imsize<1:
-                    vmax/=max(imsize, 0.2)
-                if imsize<0.1:
-                    vmin+=imsize/100*(0.1/imsize)**1.35
-                image_data=gaussian_filter(image_data, sigma=2)
+                vmin = min((2 / max(imsize, 0.2)) *
+                           (self.vmin / 100), self.vmax / 20)
+                if imsize < 1:
+                    vmax /= max(imsize, 0.2)
+                if imsize < 0.1:
+                    vmin += imsize / 100 * (0.1 / imsize)**1.35
+                image_data = gaussian_filter(image_data, sigma=2)
 
-                plt.imshow(image_data,
-                           norm=SymLogNorm(linthresh=vmin*20, vmin=self.vmin/1.4, vmax=vmax), origin='lower', cmap=cmap)
+                plt.imshow(
+                    image_data,
+                    norm=SymLogNorm(
+                        linthresh=vmin * 20,
+                        vmin=self.vmin / 1.4,
+                        vmax=vmax),
+                    origin='lower',
+                    cmap=cmap)
             else:
-                plt.imshow(np.clip(image_data, a_min=None, a_max=self.vmax),
-                           norm=LogNorm(vmin=self.vmin / 1.4, vmax=self.vmax), origin='lower', cmap=cmap)
+                plt.imshow(
+                    np.clip(
+                        image_data,
+                        a_min=None,
+                        a_max=self.vmax),
+                    norm=LogNorm(
+                        vmin=self.vmin /
+                        1.4,
+                        vmax=self.vmax),
+                    origin='lower',
+                    cmap=cmap)
         if text:
             plt.annotate(
                 s=text,
@@ -158,7 +228,7 @@ class ImagingLofar:
                 fontsize=20,
                 bbox=dict(facecolor='white', alpha=1),
             )
-        elif ra and dec and imsize>0.1:
+        elif ra and dec and imsize > 0.1:
             plt.annotate(
                 s=f'RA: {round(ra, 5)}\nDEC: {round(dec, 5)}',
                 xy=(0, 0),
@@ -175,13 +245,18 @@ class ImagingLofar:
         plt.tight_layout()
         plt.subplots_adjust(left=0.0, bottom=0.0, top=1.0, right=1.0)
         if save:
-            plt.savefig(f'{self.image_directory}/{image_name}', bbox_inches='tight', dpi=dpi, facecolor='black',
-                        edgecolor='black')
+            plt.savefig(
+                f'{self.image_directory}/{image_name}',
+                bbox_inches='tight',
+                dpi=dpi,
+                facecolor='black',
+                edgecolor='black')
             plt.close()
         else:
             plt.show()
         if self.verbose:
-            print(f"You can now find your image in '{self.image_directory}/{image_name}'")
+            print(
+                f"You can now find your image in '{self.image_directory}/{image_name}'")
 
         return self
 
@@ -214,14 +289,23 @@ class ImagingLofar:
         :param dec: Declination (degrees)
         :return: Pixel of position
         """
-        position = coordinates.SkyCoord(ra, dec,
-                                        frame=wcs.utils.wcs_to_celestial_frame(self.wcs).name,
-                                        unit=(u.degree, u.degree))
+        position = coordinates.SkyCoord(
+            ra, dec, frame=wcs.utils.wcs_to_celestial_frame(
+                self.wcs).name, unit=(
+                u.degree, u.degree))
         position = np.array(position.to_pixel(self.wcs))
         return position
 
-    def image_cutout(self, pos: tuple = None, size: tuple = None, dpi: float = 1000, image_name: str = None,
-                     save: bool = True, cmap: str = 'CMRmap', text: str = None, imsize: float = None):
+    def image_cutout(
+            self,
+            pos: tuple = None,
+            size: tuple = None,
+            dpi: float = 1000,
+            image_name: str = None,
+            save: bool = True,
+            cmap: str = 'CMRmap',
+            text: str = None,
+            imsize: float = None):
         """
         Make image cutout and make image
         ------------------------------------------------------------
@@ -237,20 +321,46 @@ class ImagingLofar:
         ra, dec = pos
         pix_x, pix_y = self.to_pixel(ra, dec)
         if size:
-            if size[0]<2 and size[0]<2:
-                size = (np.int(imsize/np.max(self.wcs.pixel_scale_matrix)), np.int(imsize/np.max(self.wcs.pixel_scale_matrix)))
+            if size[0] < 2 and size[0] < 2:
+                size = (
+                    np.int(
+                        imsize /
+                        np.max(
+                            self.wcs.pixel_scale_matrix)),
+                    np.int(
+                        imsize /
+                        np.max(
+                            self.wcs.pixel_scale_matrix)))
         else:
-            size = (np.int(imsize/np.max(self.wcs.pixel_scale_matrix)), np.int(imsize/np.max(self.wcs.pixel_scale_matrix)))
+            size = (np.int(imsize / np.max(self.wcs.pixel_scale_matrix)),
+                    np.int(imsize / np.max(self.wcs.pixel_scale_matrix)))
         image_data, wcs = self.make_cutout((pix_x, pix_y), size)
         if self.verbose:
-            print(f"Let's now image '{image_name.replace('_',' ').replace('.png','').replace('.',' ').title()}'")
-        if size[0]<dpi:
-            dpi=size[0]
-        self.imaging(image_data=image_data, wcs=wcs, image_name=image_name, dpi=dpi,
-                     save=save, cmap=cmap, text=text, imsize=imsize, ra=ra, dec=dec)
+            print(
+                f"Let's now image '{image_name.replace('_',' ').replace('.png','').replace('.',' ').title()}'")
+        if size[0] < dpi:
+            dpi = size[0]
+        self.imaging(
+            image_data=image_data,
+            wcs=wcs,
+            image_name=image_name,
+            dpi=dpi,
+            save=save,
+            cmap=cmap,
+            text=text,
+            imsize=imsize,
+            ra=ra,
+            dec=dec)
         return self
 
-    def make_fits(self, pos: tuple = None, size: tuple = (1000, 1000), filename: str = None, imsize: float = None):
+    def make_fits(
+            self,
+            pos: tuple = None,
+            size: tuple = (
+                1000,
+                1000),
+            filename: str = None,
+            imsize: float = None):
         """
         Make image cutout and make fitsfile
         ------------------------------------------------------------
@@ -262,15 +372,25 @@ class ImagingLofar:
         ra, dec = pos
         pix_x, pix_y = self.to_pixel(ra, dec)
         if size:
-            if size[0]<2 and size[0]<2:
-                size = (np.int(imsize/np.max(self.wcs.pixel_scale_matrix)), np.int(imsize/np.max(self.wcs.pixel_scale_matrix)))
+            if size[0] < 2 and size[0] < 2:
+                size = (
+                    np.int(
+                        imsize /
+                        np.max(
+                            self.wcs.pixel_scale_matrix)),
+                    np.int(
+                        imsize /
+                        np.max(
+                            self.wcs.pixel_scale_matrix)))
         else:
-            size = (np.int(imsize/np.max(self.wcs.pixel_scale_matrix)), np.int(imsize/np.max(self.wcs.pixel_scale_matrix)))
+            size = (np.int(imsize / np.max(self.wcs.pixel_scale_matrix)),
+                    np.int(imsize / np.max(self.wcs.pixel_scale_matrix)))
         image_data, wcs = self.make_cutout((pix_x, pix_y), size)
         self.hdu.data = image_data
         self.hdu.header.update(wcs.to_header())
         self.hdu.writeto(f'{self.image_directory}/{filename}', overwrite=True)
         return self
+
 
 if __name__ == '__main__':
     print('Cannot call script directly.')

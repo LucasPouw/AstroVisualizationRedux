@@ -11,13 +11,26 @@ warnings.filterwarnings("ignore")
 
 __all__ = ['MovieMaker']
 
+
 class MovieMaker(ImagingLofar):
     """
     MovieMaker makes it possible to make individual frames and turn them into a video.
     """
-    def __init__(self, fits_file: str = None, imsize: float = None, framerate: float = None, process: str = None,
-                 fits_download: bool=False, new: bool = True, text: str = None, vmin: float = None, vmax: float = None, zoom_effect: bool = False,
-                 output_file: str = 'frames', cmap: str = None):
+
+    def __init__(
+            self,
+            fits_file: str = None,
+            imsize: float = None,
+            framerate: float = None,
+            process: str = None,
+            fits_download: bool = False,
+            new: bool = True,
+            text: str = None,
+            vmin: float = None,
+            vmax: float = None,
+            zoom_effect: bool = False,
+            output_file: str = 'frames',
+            cmap: str = None):
         """
         :param fits_file: fits file name
         :param imsize: initial image size
@@ -27,7 +40,14 @@ class MovieMaker(ImagingLofar):
         :param cmap: choose your favorite cmap
         """
         self.output_file = output_file
-        super().__init__(fits_file = fits_file, image_directory=self.output_file, verbose=False, fits_download=fits_download, vmin=vmin, vmax=vmax, zoom_effect=zoom_effect)
+        super().__init__(
+            fits_file=fits_file,
+            image_directory=self.output_file,
+            verbose=False,
+            fits_download=fits_download,
+            vmin=vmin,
+            vmax=vmax,
+            zoom_effect=zoom_effect)
         self.process = process
         self.imsize = imsize
         self.framerate = framerate
@@ -43,7 +63,6 @@ class MovieMaker(ImagingLofar):
         if new:
             os.system(f'rm -rf {output_file}; mkdir {output_file}')
 
-
     def __call__(self, imsize: float = None, process: str = None):
         """
         __call__ method enables the option to change the instances.
@@ -55,16 +74,16 @@ class MovieMaker(ImagingLofar):
         :param process: process [multiprocess, multithread, None]
         """
         if imsize:
-            self.imsize=imsize
+            self.imsize = imsize
             print(f'Current image size: {self.imsize}')
         if process:
-            self.process=process
+            self.process = process
             print(f'Process: {self.process}')
         pass
 
     def __getstate__(self):
         """ This is called before pickling"""
-        if self.process=='multiprocess':
+        if self.process == 'multiprocess':
             state = self.__dict__.copy()
             del state['hdu']
             return state
@@ -73,7 +92,13 @@ class MovieMaker(ImagingLofar):
         """ This is called while unpickling. """
         self.__dict__.update(state)
 
-    def make_frame(self, N, ra = None, dec = None, imsize: float = None, dpi: float = 300):
+    def make_frame(
+            self,
+            N,
+            ra=None,
+            dec=None,
+            imsize: float = None,
+            dpi: float = 300):
         """
         Make seperate frame (image)
         ------------------------------------------------------------
@@ -83,17 +108,21 @@ class MovieMaker(ImagingLofar):
         :param imsize: image size (pixel or degree size)
         :param dpi: dots per inch (pixel density)
         """
-        print(colored(f"Frame number: {N-self.N_min}/{self.N_max-self.N_min}", 'red'), end='\r')
+        print(
+            colored(
+                f"Frame number: {N-self.N_min}/{self.N_max-self.N_min}",
+                'red'),
+            end='\r')
 
-        ## reduce jitter by always having a central pixel (force odd size)
-        size1 = np.int(imsize/np.max(self.wcs.pixel_scale_matrix))
-        size2 = np.int(imsize/np.max(self.wcs.pixel_scale_matrix)*1.77)
-        if size1%2 == 0:
+        # reduce jitter by always having a central pixel (force odd size)
+        size1 = np.int(imsize / np.max(self.wcs.pixel_scale_matrix))
+        size2 = np.int(imsize / np.max(self.wcs.pixel_scale_matrix) * 1.77)
+        if size1 % 2 == 0:
             size1 = size1 + 1
-        if size2%2 == 0:
+        if size2 % 2 == 0:
             size2 = size2 + 1
         self.image_cutout(pos=(ra, dec),
-                          size=(size1,size2),
+                          size=(size1, size2),
                           dpi=dpi,
                           image_name=f'image_{str(N).rjust(5, "0")}.png',
                           cmap=self.cmap,
@@ -106,33 +135,52 @@ class MovieMaker(ImagingLofar):
         Record individual frames and save in frames/
         ------------------------------------------------------------
         """
-        self.N_max = len(os.listdir(self.output_file))+len(self.ragrid) #max number of videos
-        self.N_min = len(os.listdir(self.output_file)) #min number of videos
-        inputs = zip(range(self.N_min, self.N_max), self.ragrid, self.decgrid, self.imsizes,
-                     np.clip(200/np.array(self.imsizes), a_min=450, a_max=700).astype(int))
+        self.N_max = len(os.listdir(self.output_file)) + \
+            len(self.ragrid)  # max number of videos
+        self.N_min = len(os.listdir(self.output_file))  # min number of videos
+        inputs = zip(
+            range(
+                self.N_min,
+                self.N_max),
+            self.ragrid,
+            self.decgrid,
+            self.imsizes,
+            np.clip(
+                200 /
+                np.array(
+                    self.imsizes),
+                a_min=450,
+                a_max=700).astype(int))
 
         print('-------------------------------------------------')
-        print(colored(f'Imaging {len(self.ragrid)} frames for current move.', 'green'))
+        print(
+            colored(
+                f'Imaging {len(self.ragrid)} frames for current move.',
+                'green'))
 
         if self.process == "multithread":
             print(f"Multithreading")
-            print(f"Might get error or bad result because multithreading is difficult with imaging.")
+            print(
+                f"Might get error or bad result because multithreading is difficult with imaging.")
             with ThreadPool(8) as p:
                 p.starmap(self.make_frame, inputs)
         elif self.process == 'multiprocess':
-            cpus=2
+            cpus = 2
             print(f"You are using {cpus} cpu's for multiprocessing")
+
             def chunked_input(input, chunksize):
                 input = list(input)
-                input_out=[]
+                input_out = []
                 for r in range(chunksize):
-                    input_out +=input[r::chunksize]
+                    input_out += input[r::chunksize]
                 del input
                 return input_out
             try:
                 with Pool(cpus) as p:
-                    p.starmap(self.make_frame, chunked_input(inputs,cpus), chunksize=cpus)
-            except:
+                    p.starmap(
+                        self.make_frame, chunked_input(
+                            inputs, cpus), chunksize=cpus)
+            except BaseException:
                 pass
         else:
             for inp in inputs:
@@ -140,7 +188,12 @@ class MovieMaker(ImagingLofar):
         print('-------------------------------------------------')
         return self
 
-    def move_to(self, first_time: bool = False, ra: float = None, dec: float = None, N_frames: int = None):
+    def move_to(
+            self,
+            first_time: bool = False,
+            ra: float = None,
+            dec: float = None,
+            N_frames: int = None):
         """
         Move to specific location.
         ------------------------------------------------------------
@@ -154,19 +207,24 @@ class MovieMaker(ImagingLofar):
         else:
             start_ra, start_dec = self.ra, self.dec
         self.ra, self.dec = ra, dec
-        if ra>start_ra:
+        if ra > start_ra:
             self.ragrid = np.linspace(start_ra, ra, N_frames)  # deg
         else:
             self.ragrid = np.linspace(ra, start_ra, N_frames)[::-1]
-        if dec>start_dec:
+        if dec > start_dec:
             self.decgrid = np.linspace(start_dec, dec, N_frames)  # deg
         else:
             self.decgrid = np.linspace(dec, start_dec, N_frames)[::-1]
-        self.imsizes = [self.imsize]*N_frames
+        self.imsizes = [self.imsize] * N_frames
         self.make_frames()
         return self
 
-    def zoom(self, N_frames: int = None, first_time: bool=False, imsize_out: float = None, full_im: bool = False):
+    def zoom(
+            self,
+            N_frames: int = None,
+            first_time: bool = False,
+            imsize_out: float = None,
+            full_im: bool = False):
         """
         Zoom in.
         ------------------------------------------------------------
@@ -176,11 +234,13 @@ class MovieMaker(ImagingLofar):
         :param full_im: start with full image (when first_time==True)
         """
         if first_time:
-            begin_size = self.image_data.shape[0] * np.max(self.wcs.pixel_scale_matrix)
+            begin_size = self.image_data.shape[0] * \
+                np.max(self.wcs.pixel_scale_matrix)
             if not full_im:
-                begin_size/=2
+                begin_size /= 2
             end_size = self.imsize
-            coordinates = self.wcs.pixel_to_world(int(self.image_data.shape[1]/2), int(self.image_data.shape[0]/2))
+            coordinates = self.wcs.pixel_to_world(
+                int(self.image_data.shape[1] / 2), int(self.image_data.shape[0] / 2))
             self.dec = coordinates.dec.degree
             self.ra = coordinates.ra.degree
         else:
@@ -188,8 +248,8 @@ class MovieMaker(ImagingLofar):
             end_size = imsize_out
         self.imsizes = np.linspace(begin_size, end_size, N_frames)
         self.imsize = self.imsizes[-1]
-        self.ragrid = np.array([self.ra]*len(self.imsizes))
-        self.decgrid = np.array([self.dec]*len(self.imsizes))
+        self.ragrid = np.array([self.ra] * len(self.imsizes))
+        self.decgrid = np.array([self.dec] * len(self.imsizes))
         self.make_frames()
         return self
 
@@ -213,46 +273,72 @@ class MovieMaker(ImagingLofar):
         ------------------------------------------------------------
         :param audio: add audio (True or False).
         """
-        os.system(f'rm movie.mp4; ffmpeg -f image2 -r {self.framerate} -start_number 0 -i {self.output_file}/image_%05d.png movie.mp4')
+        os.system(
+            f'rm movie.mp4; ffmpeg -f image2 -r {self.framerate} -start_number 0 -i {self.output_file}/image_%05d.png movie.mp4')
         if audio:
             try:
                 audio_file = input(audio)
-                os.system(f'ffmpeg -i movie.mp4 -i {audio_file} -t 65 audiomovie.mp4')
-            except:
+                os.system(
+                    f'ffmpeg -i movie.mp4 -i {audio_file} -t 65 audiomovie.mp4')
+            except BaseException:
                 print('Audio file does not exist')
         return self
 
-def crop_center(img,cropx,cropy):
-    y,x,_ = img.shape
-    startx = x//2-(cropx//2)
-    starty = y//2-(cropy//2)
-    return img[starty:starty+cropy,startx:startx+cropx,:]
+
+def crop_center(img, cropx, cropy):
+    y, x, _ = img.shape
+    startx = x // 2 - (cropx // 2)
+    starty = y // 2 - (cropy // 2)
+    return img[starty:starty + cropy, startx:startx + cropx, :]
+
 
 def fading_effect(source, frames):
-    images = glob('/home/jurjen/Documents/Python/advanced_astro_visualization/frames_high/*')
+    images = glob(
+        '/home/jurjen/Documents/Python/advanced_astro_visualization/frames_high/*')
     img1 = cv.imread(sorted(images)[-1])
-    img1 = cv.GaussianBlur(img1, (5,5), 0)
-    img2 = cv.imread(glob(f'/home/jurjen/Documents/Python/advanced_astro_visualization/fits/highres_P205/{source}*MFS-image.png')[0])
+    img1 = cv.GaussianBlur(img1, (5, 5), 0)
+    img2 = cv.imread(glob(
+        f'/home/jurjen/Documents/Python/advanced_astro_visualization/fits/highres_P205/{source}*MFS-image.png')[0])
 
-    #add extra empty rows to reshape img2
-    add_rows = int((img1.shape[1]/img1.shape[0]*img2.shape[1]-img2.shape[1])/2)
-    new = np.zeros((img2.shape[0], img2.shape[1]+add_rows*2, 3), dtype=np.float32)
-    new[:, add_rows:new.shape[1]-add_rows, :] = img2
+    # add extra empty rows to reshape img2
+    add_rows = int(
+        (img1.shape[1] /
+         img1.shape[0] *
+         img2.shape[1] -
+         img2.shape[1]) /
+        2)
+    new = np.zeros(
+        (img2.shape[0],
+         img2.shape[1] +
+         add_rows *
+         2,
+         3),
+        dtype=np.float32)
+    new[:, add_rows:new.shape[1] - add_rows, :] = img2
     img2 = new
-    #resize now img2
-    img1 = cv.resize(img1, (img2.shape[1], img2.shape[0]), interpolation=cv.INTER_AREA) # reshape image
-    for i in np.append(np.linspace(0, 1, frames//2), np.linspace(0, 1, frames//2)[::-1]):
+    # resize now img2
+    img1 = cv.resize(
+        img1,
+        (img2.shape[1],
+         img2.shape[0]),
+        interpolation=cv.INTER_AREA)  # reshape image
+    for i in np.append(np.linspace(0, 1, frames // 2),
+                       np.linspace(0, 1, frames // 2)[::-1]):
         alpha = i
         beta = 1 - alpha
         output = cv.addWeighted(img2, alpha, img1, beta, 0, dtype=cv.CV_32F)
-        output = crop_center(output, int((1 - i/4) * output.shape[1]), int((1 - i/4) * output.shape[0]))
-        n=1
-        if alpha==1:
-            n=frames//6
+        output = crop_center(output,
+                             int((1 - i / 4) * output.shape[1]),
+                             int((1 - i / 4) * output.shape[0]))
+        n = 1
+        if alpha == 1:
+            n = frames // 6
         for r in range(n):
-            images = glob('/home/jurjen/Documents/Python/advanced_astro_visualization/frames_high/*')
+            images = glob(
+                '/home/jurjen/Documents/Python/advanced_astro_visualization/frames_high/*')
             new_im_name = f'/home/jurjen/Documents/Python/advanced_astro_visualization/frames_high/image_{str(len(images)).rjust(5, "0")}.png'
             cv.imwrite(new_im_name, output)
+
 
 if __name__ == '__main__':
     print('Cannot call script directly.')
